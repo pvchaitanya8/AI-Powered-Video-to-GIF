@@ -1,24 +1,37 @@
+import os
+import openai
 
 import tkinter as tk
 from tkinter import filedialog
 import speech_recognition as sr
+
 import moviepy.editor as mp
 from moviepy.video.VideoClip import TextClip
-import openai
-import os
 
 # Function to transcribe video to text
 def transcribe_video(video_path):
     recognizer = sr.Recognizer()
+    
+    # Extract audio from video
     video = mp.VideoFileClip(video_path)
     audio_path = "temp_audio.wav"
     video.audio.write_audiofile(audio_path)
     
-    with sr.AudioFile(audio_path) as source:
-        audio = recognizer.record(source)
+    transcript = ""
+    try:
+        with sr.AudioFile(audio_path) as source:
+            audio = recognizer.record(source)
+        # Transcribe audio to text
+        transcript = recognizer.recognize_google(audio)
+    except sr.UnknownValueError:
+        transcript = "Google Speech Recognition could not understand audio"
+    except sr.RequestError as e:
+        transcript = f"Could not request results from Google Speech Recognition service; {e}"
+    finally:
+        # Clean up the temporary audio file
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
     
-    transcript = recognizer.recognize_google(audio)
-    os.remove(audio_path)
     return transcript
 
 # Function to identify GIF materials using OpenAI GPT
