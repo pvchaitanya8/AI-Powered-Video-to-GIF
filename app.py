@@ -8,7 +8,6 @@ from pydub import AudioSegment
 import speech_recognition as sr
 from moviepy.editor import VideoFileClip
 from zipfile import ZipFile
-from PIL import Image
 
 from streamlit import session_state as state
 
