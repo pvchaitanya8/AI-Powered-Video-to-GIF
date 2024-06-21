@@ -16,8 +16,9 @@ from zipfile import ZipFile
 from langchain_groq import ChatGroq
 from crewai import Agent, Task, Process, Crew
 
+# Add your API KEY here:
 LLM_Model = "llama3-8b-8192"
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "********************************************"
 
 def transcribe_video(video_path):
     recognizer = sr.Recognizer()

@@ -1,0 +1,7 @@
+streamlit==1.21.0
+opencv-python==4.5.5.64
+moviepy==1.0.3
+speechrecognition==3.8.1
+pydub==0.25.1
+langchain_groq==0.1.0
+crewai==0.2.3
