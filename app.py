@@ -1,13 +1,16 @@
-import streamlit as st
 import os
 import cv2
 import json
+import streamlit as st
 from textwrap import dedent
 import moviepy.editor as mp
 from pydub import AudioSegment
 import speech_recognition as sr
 from moviepy.editor import VideoFileClip
 from zipfile import ZipFile
+from PIL import Image
+
+from streamlit import session_state as state
 
 from langchain_groq import ChatGroq
 from crewai import Agent, Task, Process, Crew
@@ -57,7 +60,7 @@ def create_gif_caption_identifier_task(api_key, model, Text_Transcript):
     )
 
     GIF_caption_identifier_Task = Task(
-        description=dedent(f"""\
+        description=dedent(f"""\        
             **INPUT:**
                 * **Text:**
                     {Text_Transcript}
@@ -65,20 +68,10 @@ def create_gif_caption_identifier_task(api_key, model, Text_Transcript):
                 Identify sentences within the text that can be used as captions for GIFs. ENSURE THE SELECTED SENTENCES ARE EXACTLY AS IN THE INPUT TEXT. NO SINGLE WORD OR LETTER SHOULD BE DIFFERENT OR NEW.
             
             **MANDATORY NOTE:**
-                OUTPUT ONLY JSON. Absolutely nothing else.
+                OUTPUT ONLY JSON. ABSOLUTELY NOTHING ELSE. NOT EVEN ANY NOTE OR SINGLE LETTER.
 
             **OUTPUT:**
                 Output the selected sentences as a JSON object, with each sentence being a separate entry.
-
-            
-            **EXAMPLE OUTPUT:**
-                {{
-                    "captions": [
-                        "This is a perfect moment!",
-                        "I can't believe this is happening.",
-                        "Let's make this unforgettable."
-                    ]
-                }}
         """),
         agent=GIF_caption_identifier,
         expected_output=dedent("""\
@@ -104,7 +97,6 @@ def create_gif_caption_identifier_task(api_key, model, Text_Transcript):
     crew_result = crew.kickoff()
 
     return crew_result
-
 
 def extract_audio_from_video(video_path, audio_path):
     video = VideoFileClip(video_path)
@@ -157,7 +149,7 @@ def save_video_clip(video_path, start_time, end_time, output_path):
     clip = video.subclip(start_time, end_time)
     clip.write_videofile(output_path, codec="libx264")
 
-def add_text_to_video(caption, video_path, output_path, font=cv2.FONT_HERSHEY_SIMPLEX):
+def add_text_to_video(caption, video_path, output_path, font=cv2.FONT_HERSHEY_SIMPLEX, font_scale=3, font_color=(255, 255, 255), thickness=9):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error opening video file: {video_path}")
@@ -175,9 +167,6 @@ def add_text_to_video(caption, video_path, output_path, font=cv2.FONT_HERSHEY_SI
         if not ret:
             break
 
-        font_scale = 3
-        font_color = (255, 255, 255)  
-        thickness = 9
         text_size = cv2.getTextSize(caption, font, font_scale, thickness)[0]
         text_x = (frame_width - text_size[0]) // 2
         text_y = frame_height - 160
@@ -190,6 +179,25 @@ def add_text_to_video(caption, video_path, output_path, font=cv2.FONT_HERSHEY_SI
     out.release()
     print(f"Processed video saved as {output_path}")
 
+def create_preview_frame(video_path, caption, font=cv2.FONT_HERSHEY_SIMPLEX, font_scale=3, font_color=(255, 255, 255), thickness=9):
+    cap = cv2.VideoCapture(video_path)
+    ret, frame = cap.read()
+    if not ret:
+        print(f"Error reading video file: {video_path}")
+        return None
+
+    text_size = cv2.getTextSize(caption, font, font_scale, thickness)[0]
+    text_x = (frame.shape[1] - text_size[0]) // 2
+    text_y = frame.shape[0] - 160
+
+    cv2.putText(frame, caption, (text_x, text_y), font, font_scale, font_color, thickness, cv2.LINE_AA)
+
+    cap.release()
+
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    return frame_rgb
+
 def convert_mp4_to_gif(mp4_file, speed_factor=4):
     gif_file = mp4_file.replace('.mp4', '.gif')
     clip = VideoFileClip(mp4_file)
@@ -197,8 +205,25 @@ def convert_mp4_to_gif(mp4_file, speed_factor=4):
     clip.write_gif(gif_file)
     print(f"Converted {mp4_file} to {gif_file} with speed factor {speed_factor}")
 
+# UI
+st.set_page_config(
+    page_title="Video to GIF Generator",
+    page_icon="➡️",
+)
+
 st.title("Video to GIF Generator")
-st.write("Upload a video file to generate GIFs with captions")
+st.markdown("Upload a video file to generate GIFs with captions.")
+
+default_settings = {
+    "font_scale": 3,
+    "font_color": "#FFFFFF",
+    "thickness": 9,
+    "font_style": "Hershey Simplex"
+}
+
+for key, value in default_settings.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 uploaded_file = st.file_uploader("Choose a video file...", type=["mp4"])
 if uploaded_file is not None:
@@ -206,6 +231,38 @@ if uploaded_file is not None:
     with open(video_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
     st.video(video_path)
+
+    st.sidebar.title("Caption Settings")
+
+    font_options = {
+        "Hershey Simplex": cv2.FONT_HERSHEY_SIMPLEX,
+        "Hershey Plain": cv2.FONT_HERSHEY_PLAIN,
+        "Hershey Duplex": cv2.FONT_HERSHEY_DUPLEX,
+        "Hershey Complex": cv2.FONT_HERSHEY_COMPLEX,
+        "Hershey Triplex": cv2.FONT_HERSHEY_TRIPLEX,
+        "Hershey Complex Small": cv2.FONT_HERSHEY_COMPLEX_SMALL,
+        "Hershey Script Simplex": cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
+        "Hershey Script Complex": cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
+    }
+
+    font_scale = st.sidebar.slider("Font Scale", 1, 10, st.session_state.font_scale)
+    font_color = st.sidebar.color_picker("Font Color", st.session_state.font_color)
+    thickness = st.sidebar.slider("Thickness", 1, 20, st.session_state.thickness)
+    font_style = st.sidebar.selectbox("Font Style", list(font_options.keys()), index=list(font_options.keys()).index(st.session_state.font_style))
+    preview_caption = st.sidebar.text_input("Preview Caption", "Sample Caption")
+
+    st.session_state.font_scale = font_scale
+    st.session_state.font_color = font_color
+    st.session_state.thickness = thickness
+    st.session_state.font_style = font_style
+
+    font = font_options[st.session_state.font_style]
+
+    if st.sidebar.button("Preview Caption"):
+        font_color_bgr = tuple(int(st.session_state.font_color[i:i+2], 16) for i in (5, 3, 1))
+        frame = create_preview_frame(video_path, preview_caption, font=font, font_scale=st.session_state.font_scale, font_color=font_color_bgr, thickness=st.session_state.thickness)
+        if frame is not None:
+            st.sidebar.image(frame, caption="Preview", use_column_width=True)
 
     if st.button("Generate GIFs"):
         progress_bar = st.progress(0)
@@ -246,10 +303,11 @@ if uploaded_file is not None:
         status_text.text("Step 3: Video clips created successfully")
 
         clips_paths_captioned = []
+        font_color_bgr = tuple(int(st.session_state.font_color[i:i+2], 16) for i in (5, 3, 1))
         for caption, video_path in clips_paths.items():
             output_path = f"output_{caption.replace(' ', '_')}.mp4"
             clips_paths_captioned.append(output_path)
-            add_text_to_video(caption, video_path, output_path, font=cv2.FONT_HERSHEY_SIMPLEX)
+            add_text_to_video(caption, video_path, output_path, font=font, font_scale=st.session_state.font_scale, font_color=font_color_bgr, thickness=st.session_state.thickness)
 
         progress_bar.progress(90)
         status_text.text("Step 4: Added text to video clips successfully")
@@ -268,8 +326,11 @@ if uploaded_file is not None:
             for gif_file in gif_files:
                 zipf.write(gif_file)
 
-        st.download_button(label="Download all GIFs", data=open(zip_file_path, 'rb').read(), file_name=zip_file_path, mime='application/zip')
+        if "downloaded" not in state:
+            state.downloaded = False
+
+        if not state.downloaded:
+            if st.download_button(label="Download all GIFs", data=open(zip_file_path, 'rb').read(), file_name=zip_file_path, mime='application/zip', key="download_gifs"):
+                state.downloaded = True
 
         st.success("All steps completed!")
-
-st.write("Note: This process may take some time depending on the length of the video and the number of GIFs generated.")
