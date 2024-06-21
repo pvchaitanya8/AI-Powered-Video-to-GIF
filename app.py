@@ -1,21 +1,23 @@
 import os
 import cv2
 import json
-import streamlit as st
 from textwrap import dedent
-import moviepy.editor as mp
-from pydub import AudioSegment
-import speech_recognition as sr
-from moviepy.editor import VideoFileClip
-from zipfile import ZipFile
 
+import streamlit as st
 from streamlit import session_state as state
 
+import moviepy.editor as mp
+from moviepy.editor import VideoFileClip
+
+import speech_recognition as sr
+from pydub import AudioSegment
+
+from zipfile import ZipFile
 from langchain_groq import ChatGroq
 from crewai import Agent, Task, Process, Crew
 
-GROQ_API_KEY = "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"
 LLM_Model = "llama3-8b-8192"
+GROQ_API_KEY = "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"
 
 def transcribe_video(video_path):
     recognizer = sr.Recognizer()
@@ -151,7 +153,6 @@ def save_video_clip(video_path, start_time, end_time, output_path):
 def add_text_to_video(caption, video_path, output_path, font=cv2.FONT_HERSHEY_SIMPLEX, font_scale=3, font_color=(255, 255, 255), thickness=9):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print(f"Error opening video file: {video_path}")
         return
 
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -176,13 +177,11 @@ def add_text_to_video(caption, video_path, output_path, font=cv2.FONT_HERSHEY_SI
 
     cap.release()
     out.release()
-    print(f"Processed video saved as {output_path}")
 
 def create_preview_frame(video_path, caption, font=cv2.FONT_HERSHEY_SIMPLEX, font_scale=3, font_color=(255, 255, 255), thickness=9):
     cap = cv2.VideoCapture(video_path)
     ret, frame = cap.read()
     if not ret:
-        print(f"Error reading video file: {video_path}")
         return None
 
     text_size = cv2.getTextSize(caption, font, font_scale, thickness)[0]
@@ -202,7 +201,6 @@ def convert_mp4_to_gif(mp4_file, speed_factor=4):
     clip = VideoFileClip(mp4_file)
     clip = clip.speedx(factor=speed_factor)
     clip.write_gif(gif_file)
-    print(f"Converted {mp4_file} to {gif_file} with speed factor {speed_factor}")
 
 # UI
 st.set_page_config(
