@@ -16,9 +16,8 @@ from zipfile import ZipFile
 from langchain_groq import ChatGroq
 from crewai import Agent, Task, Process, Crew
 
-# Add your API KEY here:
-LLM_Model = "llama3-8b-8192"
-GROQ_API_KEY = "********************************************"
+LLM_Model = "mixtral-8x7b-32768"
+GROQ_API_KEY = "********************************"
 
 def transcribe_video(video_path):
     recognizer = sr.Recognizer()
@@ -70,7 +69,7 @@ def create_gif_caption_identifier_task(api_key, model, Text_Transcript):
                 Identify sentences within the text that can be used as captions for GIFs. ENSURE THE SELECTED SENTENCES ARE EXACTLY AS IN THE INPUT TEXT. NO SINGLE WORD OR LETTER SHOULD BE DIFFERENT OR NEW.
             
             **MANDATORY NOTE:**
-                OUTPUT ONLY JSON. ABSOLUTELY NOTHING ELSE. NOT EVEN ANY NOTE OR SINGLE LETTER.
+                OUTPUT ONLY JSON. ABSOLUTELY NOTHING ELSE. NOT EVEN ANY SINGLE NOTE OR SINGLE CHARACTER OTHER THAN JSON FILE.
 
             **OUTPUT:**
                 Output the selected sentences as a JSON object, with each sentence being a separate entry.
@@ -97,6 +96,8 @@ def create_gif_caption_identifier_task(api_key, model, Text_Transcript):
     )
 
     crew_result = crew.kickoff()
+    crew_result = crew_result.replace("```json", "")
+    crew_result = crew_result.replace("```", "")
 
     return crew_result
 
