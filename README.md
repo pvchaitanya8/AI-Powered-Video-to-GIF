@@ -12,6 +12,17 @@ This project is a Streamlit web application that allows users to generate GIFs f
 - Convert video clips to GIFs.
 - Download all generated GIFs as a zip file.
 
+## Overview 
+![image](https://github.com/pvchaitanya8/AI-Powered-Video-to-GIF/assets/93573686/e9d79e32-4996-4546-a851-fa249183a304)
+
+
+## Output Images
+![image](https://github.com/pvchaitanya8/AI-Powered-Video-to-GIF/assets/93573686/3a41759a-5af3-4fed-a746-ac81bd4477d5)
+![image](https://github.com/pvchaitanya8/AI-Powered-Video-to-GIF/assets/93573686/c8590a45-6a46-4983-a84c-4c6f33d06484)
+![image](https://github.com/pvchaitanya8/AI-Powered-Video-to-GIF/assets/93573686/b6d9d7e2-21d6-4371-bec6-3bda0a1f8c6b)
+![image](https://github.com/pvchaitanya8/AI-Powered-Video-to-GIF/assets/93573686/a6179e74-6d7b-400c-a2fb-d591cc8217f8)
+
+
 ## Prerequisites
 
 - Python 3.8 or higher
