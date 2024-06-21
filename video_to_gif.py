@@ -1,14 +1,12 @@
 import os
 import openai
-
 import tkinter as tk
 from tkinter import filedialog
 import speech_recognition as sr
-
 import moviepy.editor as mp
-from moviepy.video.VideoClip import TextClip
+from moviepy.video.tools.subtitles import SubtitlesClip
 
-# Function to transcribe video to text
+# Function to transcribe video to text with timing
 def transcribe_video(video_path):
     recognizer = sr.Recognizer()
     
@@ -17,12 +15,16 @@ def transcribe_video(video_path):
     audio_path = "temp_audio.wav"
     video.audio.write_audiofile(audio_path)
     
-    transcript = ""
+    transcript = []
     try:
         with sr.AudioFile(audio_path) as source:
             audio = recognizer.record(source)
-        # Transcribe audio to text
-        transcript = recognizer.recognize_google(audio)
+            # Transcribe audio to text with timing
+            words = recognizer.recognize_google(audio, show_all=True)
+            if 'alternative' in words:
+                for alternative in words['alternative']:
+                    if 'transcript' in alternative and 'timestamps' in alternative:
+                        transcript = alternative['timestamps']
     except sr.UnknownValueError:
         transcript = "Google Speech Recognition could not understand audio"
     except sr.RequestError as e:
@@ -39,7 +41,7 @@ def identify_gif_material(transcript, openai_api_key):
     openai.api_key = openai_api_key
     response = openai.Completion.create(
         engine="text-davinci-003",
-        prompt=f"Identify potential GIF materials from the transcript:\n\n{transcript}",
+        prompt=f"Identify potential GIF materials from the transcript with timing:\n\n{transcript}",
         max_tokens=150
     )
     return response.choices[0].text.strip().split('\n')
@@ -48,10 +50,15 @@ def identify_gif_material(transcript, openai_api_key):
 def create_gifs(video_path, gif_materials):
     video = mp.VideoFileClip(video_path)
     gifs = []
-    for i, text in enumerate(gif_materials):
-        text_clip = TextClip(text, fontsize=70, color='white', size=video.size)
-        text_clip = text_clip.set_position('center').set_duration(5)
-        gif_clip = mp.CompositeVideoClip([video, text_clip])
+    for i, material in enumerate(gif_materials):
+        start, end, text = material.split(',')
+        start, end = float(start), float(end)
+        video_segment = video.subclip(start, end)
+        
+        text_clip = mp.TextClip(text, fontsize=70, color='white', size=video.size)
+        text_clip = text_clip.set_position('center').set_duration(end-start)
+        
+        gif_clip = mp.CompositeVideoClip([video_segment, text_clip])
         gif_path = f"output_{i}.gif"
         gif_clip.write_gif(gif_path)
         gifs.append(gif_path)
