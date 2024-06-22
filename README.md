@@ -61,15 +61,15 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-2. Open the Streamlit app in your web browser. The default URL is `http://localhost:8501`.
+3. Open the Streamlit app in your web browser. The default URL is `http://localhost:8501`.
 
-3. Upload a video file using the file uploader.
+4. Upload a video file using the file uploader.
 
-4. Configure the caption settings in the sidebar (font style, scale, color, thickness).
+5. Configure the caption settings in the sidebar (font style, scale, color, thickness).
 
-5. Generate GIFs by clicking the "Generate GIFs" button.
+6. Generate GIFs by clicking the "Generate GIFs" button.
 
-6. Download the generated GIFs as a zip file.
+7. Download the generated GIFs as a zip file.
 
 ## Project Structure
 
