@@ -17,9 +17,11 @@ from langchain_groq import ChatGroq
 from crewai import Agent, Task, Process, Crew
 
 LLM_Model = "mixtral-8x7b-32768"
-GROQ_API_KEY = "********************************"
+GROQ_API_KEY = "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"
 
-def transcribe_video(video_path):
+Json_Formatting_iteration_limit = 5
+
+def transcribe_video(video_path: str) -> str:
     recognizer = sr.Recognizer()
     video = mp.VideoFileClip(video_path)
     audio_path = "temp_audio.wav"
@@ -40,7 +42,78 @@ def transcribe_video(video_path):
 
     return transcript
 
-def create_gif_caption_identifier_task(api_key, model, Text_Transcript):
+def create_GIF_caption_identifier_critic_task_critic(api_key: str, model: str, Input_Text: str, iteration_limit: int = Json_Formatting_iteration_limit) -> str:
+    LLM_Grouq = ChatGroq(
+        api_key=api_key,
+        model=model
+    )
+
+    GIF_caption_identifier_critic = Agent(
+        role="JSON formatter",
+        goal="Respond with an array of captions in the specified JSON format.",
+        backstory=dedent("""\
+            Your task is to carefully read the input text and output it in the specified JSON format.
+        """),
+        verbose=True,
+        allow_delegation=True,
+        llm=LLM_Grouq,
+        memory=True,
+    )
+
+    GIF_caption_identifier_critic_Task = Task(
+        description=dedent(f"""\        
+            **INPUT:**
+                * **Text:**
+                    {Input_Text}
+            **TASK:**
+                Output captions sentences as specified in JSON format by removing any unnecessary formatting. This will be used as direct JSON format. Respond with an array of captions in JSON. ENSURE THE SELECTED SENTENCES ARE EXACTLY AS IN THE INPUT TEXT. NO SINGLE WORD OR LETTER SHOULD BE DIFFERENT OR NEW.
+                
+            **MANDATORY NOTE:**
+                OUTPUT ONLY JSON. ABSOLUTELY NOTHING ELSE. NOT EVEN ANY SINGLE NOTE OR SINGLE CHARACTER OTHER THAN JSON FILE.
+
+            **OUTPUT:**
+                Output the selected sentences as a JSON object, with each sentence being a separate entry.
+        """),
+        agent=GIF_caption_identifier_critic,
+        expected_output=dedent("""\
+            {
+                "captions": [
+                    "Sentence 1",
+                    "Sentence 2",
+                    ...
+                    "Sentence n"
+                ]
+            }
+        """),
+        async_execution=False
+    )
+
+    crew = Crew(
+        agents=[GIF_caption_identifier_critic],
+        tasks=[GIF_caption_identifier_critic_Task],
+        verbose=2,
+        process=Process.sequential,
+    )
+
+    crew_result = crew.kickoff()
+    crew_result = crew_result.strip().replace("```json", "").replace("```", "")
+
+    try:
+        temp = json.loads(crew_result)
+        if isinstance(temp, dict) and "captions" in temp and isinstance(temp["captions"], list):
+            return crew_result
+        else:
+            if iteration_limit > 0:
+                return create_GIF_caption_identifier_critic_task_critic(api_key, model, crew_result, iteration_limit - 1)
+            else:
+                return None
+    except json.JSONDecodeError:
+        if iteration_limit > 0:
+            return create_GIF_caption_identifier_critic_task_critic(api_key, model, crew_result, iteration_limit - 1)
+        else:
+            return None
+
+def create_gif_caption_identifier_task(api_key: str, model: str, Text_Transcript: str) -> str:
     LLM_Grouq = ChatGroq(
         api_key=api_key,
         model=model
@@ -96,16 +169,25 @@ def create_gif_caption_identifier_task(api_key, model, Text_Transcript):
     )
 
     crew_result = crew.kickoff()
-    crew_result = crew_result.replace("```json", "")
-    crew_result = crew_result.replace("```", "")
 
-    return crew_result
+    crew_result = crew_result.strip().replace("```json", "").replace("```", "")
+    try:
+        temp = json.loads(crew_result)
+        if isinstance(temp, dict) and "captions" in temp and isinstance(temp["captions"], list):
+            return crew_result
+        else:
+            return create_GIF_caption_identifier_critic_task_critic(api_key, model, crew_result)
+    except json.JSONDecodeError:
+        return create_GIF_caption_identifier_critic_task_critic(api_key, model, crew_result)
 
-def extract_audio_from_video(video_path, audio_path):
+def extract_audio_from_video(video_path: str, audio_path: str):
     video = VideoFileClip(video_path)
     video.audio.write_audiofile(audio_path)
 
 def transcribe_audio_chunk(recognizer, audio_chunk):
+    if not os.path.exists(audio_chunk):
+        raise FileNotFoundError(f"The audio chunk file {audio_chunk} does not exist.")
+    
     with sr.AudioFile(audio_chunk) as source:
         audio_data = recognizer.record(source)
         try:
