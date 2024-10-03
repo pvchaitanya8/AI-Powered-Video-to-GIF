@@ -1,5 +1,4 @@
-# Video to GIF Generator
-
+# AI Powered GIF Studio
 This project is a Streamlit web application that allows users to generate GIFs from videos with text overlays corresponding to spoken words in the video. The approach involves transcribing the video, identifying GIF-worthy fragments, and creating GIFs with text overlays.
 
 ## Features
